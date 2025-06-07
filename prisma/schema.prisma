@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  name       String?
+  createdAt  DateTime @default(now())
+  lastLogin  DateTime @updatedAt
+  progress   UserProgress[]
+}
+
+model Exercise {
+  id          String   @id @default(uuid())
+  type        ExerciseType
+  difficulty  Difficulty
+  content     String
+  instructions String
+  createdAt   DateTime @default(now())
+  progress    UserProgress[]
+}
+
+model UserProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  exerciseId  String
+  score       Float?
+  feedback    String?
+  recordingUrl String?
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+  exercise    Exercise @relation(fields: [exerciseId], references: [id])
+}
+
+enum ExerciseType {
+  VOWEL
+  CONSONANT
+  WORD
+  SENTENCE
+  TONGUE_TWISTER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+} 
