@@ -5,39 +5,34 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const progress = await prisma.userProgress.findMany({
-      include: {
-        exercise: true,
-      },
-      orderBy: {
-        completedAt: 'desc',
-      },
-      take: 10,
+    // Fetch all progress with exercise included
+    const allProgress = await prisma.userProgress.findMany({
+      include: { exercise: true },
+      orderBy: { completedAt: 'desc' },
+      take: 100, // limit for performance
     });
 
-    // Calculate statistics
+    // Aggregate by type in JS
+    const byType: Record<string, number> = {};
+    for (const item of allProgress) {
+      const type = item.exercise.type;
+      byType[type] = (byType[type] || 0) + 1;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
     const stats = {
-      totalExercises: await prisma.userProgress.count(),
-      averageScore: await prisma.userProgress.aggregate({
-        _avg: {
-          score: true,
-        },
-      }),
-      completedToday: await prisma.userProgress.count({
-        where: {
-          completedAt: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          },
-        },
-      }),
-      byType: await prisma.userProgress.groupBy({
-        by: ['exercise.type'],
-        _count: true,
-      }),
+      totalExercises: allProgress.length,
+      averageScore:
+        allProgress.reduce((acc, curr) => acc + (curr.score || 0), 0) /
+        (allProgress.length || 1),
+      completedToday: allProgress.filter(
+        (item) => item.completedAt.toISOString().split('T')[0] === today
+      ).length,
+      byType,
     };
 
     return NextResponse.json({
-      progress,
+      progress: allProgress,
       stats,
     });
   } catch (error) {
